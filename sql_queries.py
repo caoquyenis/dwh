@@ -19,17 +19,17 @@ time_table_drop = "DROP TABLE IF EXISTS time"
 
 staging_events_table_create = ("""
     CREATE TABLE IF NOT EXISTS staging_events (
-        event_id IDENTITY(0,1) PRIMARY KEY NOT NULL,
+        event_id bigint PRIMARY KEY NOT NULL,
         artist VARCHAR NOT NULL,
         auth VARCHAR NOT NULL,
         firstName VARCHAR NOT NULL,
-        gender VARCHAR(1) NOT NULL,
-        itemInSession INT NOT NULL
+        gender VARCHAR NOT NULL,
+        itemInSession INT NOT NULL,
         lastName VARCHAR NOT NULL,
         length FLOAT,
         level VARCHAR NOT NULL,
         location VARCHAR NOT NULL,
-        method VARCHAR NOT NULL
+        method VARCHAR NOT NULL,
         page VARCHAR NOT NULL,
         registration FLOAT NOT NULL,
         sessionId INT NOT NULL,
@@ -43,13 +43,13 @@ staging_events_table_create = ("""
 
 staging_songs_table_create = ("""
     CREATE TABLE IF NOT EXISTS staging_songs (
-        num_songs IDENTITY(0,1) PRIMARY KEY NOT NULL,
+        num_songs bigint PRIMARY KEY NOT NULL,
         artist_id VARCHAR NOT NULL,
         artist_latitude FLOAT,
         artist_logitude FLOAT,
         artist_location VARCHAR,
         artist_name VARCHAR,
-        song_id FLOAT NOT NULL,
+        song_id VARCHAR NOT NULL,
         title VARCHAR,
         duration FLOAT NOT NULL,
         year INT NOT NULL
@@ -58,7 +58,7 @@ staging_songs_table_create = ("""
 # Fact table creating
 songplays_table_create = ("""
     CREATE TABLE IF NOT EXISTS songsplays (
-        songsplay_id        IDENTITY(0,1) PRIMARY KEY NOT NULL,
+        songsplay_id        int IDENTITY(0,1) PRIMARY KEY NOT NULL,
         start_time          BIGINT NOT NULL,
         user_id             INT NOT NULL,
         level               VARCHAR,
@@ -117,14 +117,14 @@ time_table_create = ("""
 staging_events_copy = ("""
     COPY staging_events FROM 's3://udacity-dend/log_data'
     CREDENTIALS 'aws_iam_role={}'
-    gzip delimiter ';' compudate of region 'us-west-2';
-""").format('arn:aws:iam::501200385798:user/TestUser')
+    gzip delimiter ';' compupdate off region 'us-west-2';
+""").format('arn:aws:iam::501200385798:role/dwhRole')
 
 staging_songs_copy = ("""
     COPY staging_songs FROM 's3://udacity-dend/song_data'
     CREDENTIALS 'aws_iam_role={}'
-    gzip delimiter ';' compudate of region 'us-west-2';
-""").format('arn:aws:iam::501200385798:user/TestUser')
+    gzip delimiter ';' compupdate off region 'us-west-2';
+""").format('arn:aws:iam::501200385798:role/dwhRole')
 
 # FINAL TABLES
 
@@ -201,3 +201,9 @@ drop_table_queries = [staging_events_table_drop, staging_songs_table_drop,
 copy_table_queries = [staging_events_copy, staging_songs_copy]
 insert_table_queries = [songplays_table_insert, users_table_insert,
                         songs_table_insert, artists_table_insert, time_table_insert]
+# Table test
+
+redshift_select = ("""
+SELECT *
+FROM dev
+""")
