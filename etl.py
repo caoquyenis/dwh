@@ -1,16 +1,16 @@
 from cgitb import reset
 import configparser
 import psycopg2
-from sql_queries import copy_table_queries, insert_table_queries
+import sql_queries as sql
 
 def load_staging_tables(cur, conn):
-    for query in copy_table_queries:
+    for query in sql.copy_table_queries:
         cur.execute(query)
         conn.commit()
 
 
 def insert_tables(cur, conn):
-    for query in insert_table_queries:
+    for query in sql.insert_table_queries:
         cur.execute(query)
         conn.commit()
 
@@ -22,33 +22,10 @@ def main():
 
     conn = psycopg2.connect("host={} dbname={} user={} password={} port={}".format(*config['CLUSTER'].values()))
     cur = conn.cursor()
-    
-    cur.execute("""
-        SELECT 
-            event_id,
-            artist,
-            auth,
-            firstName,
-            gender,
-            itemInSession,
-            lastName,
-            length,
-            level,
-            location,
-            method,
-            page,
-            registration,
-            sessionId,
-            song,
-            status,
-            ts,
-            userAgent,
-            userId
-        FROM staging_events""")
-    result = cur.fetchall()
-    print(result)
+    # print(cur)
+
     load_staging_tables(cur, conn)
-    # insert_tables(cur, conn)
+    insert_tables(cur, conn)
 
     conn.close()
 
