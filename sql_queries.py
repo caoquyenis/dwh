@@ -1,9 +1,4 @@
-import configparser
 
-
-# CONFIG
-config = configparser.ConfigParser()
-config.read('dwh.cfg')
 
 # DROP TABLES
 
@@ -16,49 +11,48 @@ artists_table_drop = "DROP TABLE IF EXISTS artists"
 time_table_drop = "DROP TABLE IF EXISTS time"
 
 # CREATE TABLES
-
+## Staging table creating
 staging_events_table_create = ("""
     CREATE TABLE IF NOT EXISTS staging_events (
-        event_id bigint PRIMARY KEY NOT NULL,
-        artist VARCHAR NOT NULL,
+        artist VARCHAR,
         auth VARCHAR NOT NULL,
-        firstName VARCHAR NOT NULL,
-        gender VARCHAR NOT NULL,
+        firstName VARCHAR,
+        gender VARCHAR,
         itemInSession INT NOT NULL,
-        lastName VARCHAR NOT NULL,
+        lastName VARCHAR,
         length FLOAT,
         level VARCHAR NOT NULL,
-        location VARCHAR NOT NULL,
+        location VARCHAR,
         method VARCHAR NOT NULL,
         page VARCHAR NOT NULL,
-        registration FLOAT NOT NULL,
+        registration FLOAT,
         sessionId INT NOT NULL,
-        song VARCHAR NOT NULL,
+        song VARCHAR,
         status INT NOT NULL,
         ts BIGINT NOT NULL,
-        userAgent VARCHAR NOT NULL,
-        userId INT NOT NULL
+        userAgent VARCHAR,
+        userId INT
     )
 """)
 
 staging_songs_table_create = ("""
     CREATE TABLE IF NOT EXISTS staging_songs (
-        num_songs bigint PRIMARY KEY NOT NULL,
         artist_id VARCHAR NOT NULL,
         artist_latitude FLOAT,
-        artist_logitude FLOAT,
         artist_location VARCHAR,
+        artist_logitude FLOAT,
         artist_name VARCHAR,
+        duration FLOAT NOT NULL,
+        num_songs int,
         song_id VARCHAR NOT NULL,
         title VARCHAR,
-        duration FLOAT NOT NULL,
         year INT NOT NULL
     )
 """)
 # Fact table creating
 songplays_table_create = ("""
-    CREATE TABLE IF NOT EXISTS songsplays (
-        songsplay_id        int IDENTITY(0,1) PRIMARY KEY NOT NULL,
+    CREATE TABLE IF NOT EXISTS songplays (
+        songplay_id         INT IDENTITY(0,1) PRIMARY KEY NOT NULL,
         start_time          BIGINT NOT NULL,
         user_id             INT NOT NULL,
         level               VARCHAR,
@@ -117,29 +111,35 @@ time_table_create = ("""
 staging_events_copy = ("""
     COPY staging_events FROM 's3://udacity-dend/log_data'
     CREDENTIALS 'aws_iam_role={}'
-    gzip delimiter ';' compupdate off region 'us-west-2';
+    JSON 's3://udacity-dend/log_json_path.json'
+    compupdate off region 'us-west-2';
 """).format('arn:aws:iam::501200385798:role/dwhRole')
 
 staging_songs_copy = ("""
     COPY staging_songs FROM 's3://udacity-dend/song_data'
     CREDENTIALS 'aws_iam_role={}'
-    gzip delimiter ';' compupdate off region 'us-west-2';
+    JSON 'auto'
+    compupdate off region 'us-west-2';
 """).format('arn:aws:iam::501200385798:role/dwhRole')
 
 # FINAL TABLES
 
 songplays_table_insert = ("""
-    INSERT INTO songsplays (
-        start_time, 
-        user_id, 
-        level, 
-        song_id, 
-        artist_id, 
-        session_id, 
-        location, 
-        user_agent
+    INSERT INTO songplays (
+        songplay_id        
+        start_time          
+        user_id             
+        level               
+        song_id             
+        artist_id           
+        session_id          
+        location            
+        user_agent          
     ) 
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+    SELECT ts as start_time, userId as user_id, level, staging_songs.song_id, staging_songs.artist_id, sessionId as session_id, location, userAgent as user_agent
+    FROM staging_events
+    JOIN staging_songs ON staging_events.song = staging_songs.title
+    WHERE staging_events.page == "NextSong"
 """)
 
 users_table_insert = ("""
@@ -150,7 +150,8 @@ users_table_insert = ("""
         gender, 
         level
     ) 
-    VALUES (%s, %s, %s, %s, %s)
+    SELECT userId, firstName, lastName, gender, level
+    FROM staging_events
     ON CONFLICT (user_id) DO UPDATE SET level=EXCLUDED.level
 """)
 
@@ -162,7 +163,8 @@ songs_table_insert = ("""
         year, 
         duration
     ) 
-    VALUES (%s, %s, %s, %s, %s)
+    SELECT song_id, title, artist_id, year, duration
+    FROM staging_songs
     ON CONFLICT (song_id) DO NOTHING
 """)
 
@@ -174,7 +176,8 @@ artists_table_insert = ("""
         artist_latitude, 
         artist_longitude
     ) 
-    VALUES (%s, %s, %s, %s, %s)
+    SELECT artist_id, artist_name, artist_location, artist_latitude, artist_longitude
+    FROM staging_songs
     ON CONFLICT (artist_id) DO NOTHING
 """)
 
@@ -188,7 +191,7 @@ time_table_insert = ("""
         year, 
         weekday
     ) 
-    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    SELECT start_time, hour(start_time), day(start_time), 
     ON CONFLICT (start_time) DO NOTHING
 """)
 
@@ -198,12 +201,7 @@ create_table_queries = [staging_events_table_create, staging_songs_table_create,
                         songplays_table_create, users_table_create, songs_table_create, artists_table_create, time_table_create]
 drop_table_queries = [staging_events_table_drop, staging_songs_table_drop,
                       songplays_table_drop, users_table_drop, songs_table_drop, artists_table_drop, time_table_drop]
+# copy_table_queries = [staging_events_copy]
 copy_table_queries = [staging_events_copy, staging_songs_copy]
 insert_table_queries = [songplays_table_insert, users_table_insert,
                         songs_table_insert, artists_table_insert, time_table_insert]
-# Table test
-
-redshift_select = ("""
-SELECT *
-FROM dev
-""")
