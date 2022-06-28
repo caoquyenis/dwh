@@ -136,10 +136,10 @@ songplays_table_insert = ("""
         location            
         user_agent          
     ) 
-    SELECT ts as start_time, userId as user_id, level, staging_songs.song_id, staging_songs.artist_id, sessionId as session_id, location, userAgent as user_agent
+    SELECT distinct ts as start_time, userId as user_id, level, staging_songs.song_id, staging_songs.artist_id, sessionId as session_id, location, userAgent as user_agent
     FROM staging_events
     JOIN staging_songs ON staging_events.song = staging_songs.title
-    WHERE staging_events.page == "NextSong"
+    WHERE staging_events.page = "NextSong"
 """)
 
 users_table_insert = ("""
@@ -150,9 +150,10 @@ users_table_insert = ("""
         gender, 
         level
     ) 
-    SELECT userId, firstName, lastName, gender, level
+    SELECT distinct userId, firstName, lastName, gender, level
     FROM staging_events
     ON CONFLICT (user_id) DO UPDATE SET level=EXCLUDED.level
+    WHERE staging_events.page = "NextSong"
 """)
 
 songs_table_insert = ("""
@@ -163,7 +164,7 @@ songs_table_insert = ("""
         year, 
         duration
     ) 
-    SELECT song_id, title, artist_id, year, duration
+    SELECT distinct song_id, title, artist_id, year, duration
     FROM staging_songs
     ON CONFLICT (song_id) DO NOTHING
 """)
@@ -176,7 +177,7 @@ artists_table_insert = ("""
         artist_latitude, 
         artist_longitude
     ) 
-    SELECT artist_id, artist_name, artist_location, artist_latitude, artist_longitude
+    SELECT distinct artist_id, artist_name, artist_location, artist_latitude, artist_longitude
     FROM staging_songs
     ON CONFLICT (artist_id) DO NOTHING
 """)
@@ -191,7 +192,15 @@ time_table_insert = ("""
         year, 
         weekday
     ) 
-    SELECT start_time, hour(start_time), day(start_time), 
+    SELECT distinct 
+        start_time, 
+        extract(h from start_time), 
+        extract(day from start_time), 
+        extract(w from start_time), 
+        extract(mon from start_time), 
+        extract(y from start_time), 
+        extract(dw from start_time)
+    FROM songplays 
     ON CONFLICT (start_time) DO NOTHING
 """)
 
